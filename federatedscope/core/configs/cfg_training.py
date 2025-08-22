@@ -1,3 +1,37 @@
+"""训练配置模块
+
+该模块定义了 FederatedScope 框架中训练相关的配置选项，包括训练器、优化器、
+学习率调度器、微调、梯度处理和早停等各种训练参数。
+
+主要功能:
+    - 训练器配置: 支持多种训练器类型和训练策略
+    - 优化器配置: 支持 SGD、Adam 等多种优化算法
+    - 学习率调度: 支持多种学习率调度策略
+    - 微调配置: 支持模型微调和参数冻结
+    - 梯度处理: 支持梯度裁剪和梯度累积
+    - 早停机制: 支持基于验证指标的早停
+    - SAM优化: 支持 Sharpness-Aware Minimization
+    - VeRA适配: 支持 Vector-based Random Matrix Adaptation
+
+支持的训练器类型:
+    - general: 通用训练器
+    - fedprox: FedProx 联邦学习训练器
+    - scaffold: SCAFFOLD 联邦学习训练器
+    - fedopt: FedOpt 联邦学习训练器
+
+支持的优化器:
+    - SGD: 随机梯度下降
+    - Adam: Adam 优化器
+    - AdamW: AdamW 优化器
+    - RMSprop: RMSprop 优化器
+
+支持的学习率调度器:
+    - StepLR: 步长调度器
+    - CosineAnnealingLR: 余弦退火调度器
+    - ExponentialLR: 指数衰减调度器
+    - ReduceLROnPlateau: 基于指标的调度器
+"""
+
 # 导入配置基类和注册函数
 from federatedscope.core.configs.config import CN
 from federatedscope.register import register_config
