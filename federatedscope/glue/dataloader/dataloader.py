@@ -54,9 +54,11 @@ def load_glue_dataset(config=None, **kwargs):
     sentence1_key, sentence2_key = task_to_keys[task_name]
     
     # 加载分词器
+    # 获取缓存目录，如果未配置则使用默认值
+    cache_dir = getattr(getattr(getattr(config, 'llm', None), 'cache', None), 'model', None)
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,
-        cache_dir=config.llm.cache.model
+        cache_dir=cache_dir
     )
     
     def preprocess_function(examples):
