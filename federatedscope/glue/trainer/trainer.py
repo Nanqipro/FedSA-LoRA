@@ -1,5 +1,6 @@
 import torch
 import logging
+import os
 try:
     import deepspeed
     from deepspeed import DeepSpeedEngine
@@ -17,10 +18,91 @@ from federatedscope.glue.model.adapter_builder import AdapterModel
 from datasets import load_metric
 import numpy as np
 
+# Import LoRA matrix monitor
+try:
+    from federatedscope.lora_matrix_monitor import LoRAMatrixMonitor
+except ImportError:
+    try:
+        # Try importing from parent directory
+        import sys
+        import os
+        sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        from lora_matrix_monitor import LoRAMatrixMonitor
+    except ImportError:
+        LoRAMatrixMonitor = None
+        logging.warning("LoRA Matrix Monitor not found. Matrix monitoring will be disabled.")
+
 logger = logging.getLogger(__name__)
 
 
 class GLUETrainer(GeneralTorchTrainer):
+    def __init__(self,
+                 model,
+                 data,
+                 device,
+                 config,
+                 only_for_eval=False,
+                 monitor=None):
+        super(GLUETrainer, self).__init__(model, data, device, config,
+                                          only_for_eval, monitor)
+        
+        # Initialize LoRA matrix monitor
+        self.lora_monitor = None
+        if LoRAMatrixMonitor is not None:
+            try:
+                # 使用实验输出目录作为日志文件路径
+                log_file_path = os.path.join(config.outdir, "lora_matrix_sizes.txt")
+                self.lora_monitor = LoRAMatrixMonitor(log_file_path=log_file_path)
+                logger.info(f"LoRA Matrix Monitor initialized successfully, log file: {log_file_path}")
+            except Exception as e:
+                logger.warning(f"Failed to initialize LoRA Matrix Monitor: {e}")
+        
+        self.register_hook_in_train(new_hook=self._hook_on_fit_start_numerical_precision,
+                                    trigger="on_fit_start",
+                                    insert_pos=-1)
+        self.register_hook_in_train(new_hook=self._hook_on_fit_start_init,
+                                    trigger="on_fit_start",
+                                    insert_pos=-1)
+        self.register_hook_in_eval(new_hook=self._hook_on_fit_start_init,
+                                   trigger="on_fit_start",
+                                   insert_pos=-1)
+        self.register_hook_in_train(new_hook=self._hook_on_batch_forward_flop_count,
+                                    trigger="on_batch_forward",
+                                    insert_pos=-1)
+        self.register_hook_in_eval(new_hook=self._hook_on_batch_forward_flop_count,
+                                   trigger="on_batch_forward",
+                                   insert_pos=-1)
+        
+        # Register LoRA monitoring hooks
+        if self.lora_monitor is not None:
+            self.register_hook_in_train(new_hook=self._hook_on_fit_start_lora_monitor,
+                                        trigger="on_fit_start",
+                                        insert_pos=-1)
+            self.register_hook_in_train(new_hook=self._hook_on_fit_end_lora_monitor,
+                                        trigger="on_fit_end",
+                                        insert_pos=-1)
+
+    def _hook_on_fit_start_lora_monitor(self, ctx):
+        """Hook to start LoRA matrix monitoring"""
+        if self.lora_monitor is not None:
+            try:
+                self.lora_monitor.start_monitoring(ctx.model)
+                logger.info("LoRA matrix monitoring started")
+            except Exception as e:
+                logger.warning(f"Failed to start LoRA monitoring: {e}")
+
+    def _hook_on_fit_end_lora_monitor(self, ctx):
+        """Hook to end LoRA matrix monitoring and log results"""
+        if self.lora_monitor is not None:
+            try:
+                results = self.lora_monitor.end_monitoring()
+                if results:
+                    logger.info(f"LoRA monitoring results: {results}")
+                    # Add results to eval_metrics if available
+                    if hasattr(ctx, 'eval_metrics'):
+                        ctx.eval_metrics.update(results)
+            except Exception as e:
+                logger.warning(f"Failed to end LoRA monitoring: {e}")
     def _hook_on_fit_start_numerical_precision(self, ctx):
         if self.cfg.train.is_enable_half:
             if not ctx.cfg.llm.deepspeed.use:
@@ -170,6 +252,15 @@ class GLUETrainer(GeneralTorchTrainer):
                     p.data = p.to('cpu')
                     if p.grad is not None:
                         p.grad.data = p.grad.to('cpu')
+        
+        # Log LoRA matrix statistics if monitoring is enabled
+        if hasattr(self, 'lora_monitor') and self.lora_monitor is not None:
+            try:
+                matrix_stats = self.lora_monitor.get_current_stats(ctx.model)
+                if matrix_stats:
+                    logger.info(f"Current LoRA matrix stats: {matrix_stats}")
+            except Exception as e:
+                logger.warning(f"Failed to get LoRA matrix stats: {e}")
 
     def _hook_on_batch_forward_flop_count(self, ctx):
         """

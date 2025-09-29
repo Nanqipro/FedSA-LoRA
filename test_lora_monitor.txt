@@ -1,0 +1,67 @@
+================================================================================
+LoRA Matrix Size Monitor Log
+Started at: 2025-09-29 15:24:04.887795
+================================================================================
+
+Round 0 - Client unknown - 2025-09-29 15:24:04.890919
+------------------------------------------------------------
+LoRA A Matrices:
+  layer.0.attention.self.query:
+    Shape: (8, 768)
+    Size: 6144 parameters
+    Dtype: torch.float32
+    Requires Grad: True
+  layer.1.attention.self.query:
+    Shape: (8, 768)
+    Size: 6144 parameters
+    Dtype: torch.float32
+    Requires Grad: True
+  Total LoRA A Parameters: 12288
+
+LoRA B Matrices:
+  layer.0.attention.self.query:
+    Shape: (768, 8)
+    Size: 6144 parameters
+    Dtype: torch.float32
+    Requires Grad: True
+  layer.1.attention.self.query:
+    Shape: (768, 8)
+    Size: 6144 parameters
+    Dtype: torch.float32
+    Requires Grad: True
+  Total LoRA B Parameters: 12288
+  Total LoRA Parameters (A+B): 24576
+
+================================================================================
+
+Round 1 - Client test_client - 2025-09-29 15:24:04.891181
+------------------------------------------------------------
+LoRA A Matrices:
+  layer.0.attention.self.query:
+    Shape: (8, 768)
+    Size: 6144 parameters
+    Dtype: torch.float32
+    Requires Grad: True
+  layer.1.attention.self.query:
+    Shape: (8, 768)
+    Size: 6144 parameters
+    Dtype: torch.float32
+    Requires Grad: True
+  Total LoRA A Parameters: 12288
+
+LoRA B Matrices:
+  layer.0.attention.self.query:
+    Shape: (768, 8)
+    Size: 6144 parameters
+    Dtype: torch.float32
+    Requires Grad: True
+  layer.1.attention.self.query:
+    Shape: (768, 8)
+    Size: 6144 parameters
+    Dtype: torch.float32
+    Requires Grad: True
+  Total LoRA B Parameters: 12288
+  Total LoRA Parameters (A+B): 24576
+
+================================================================================
+
